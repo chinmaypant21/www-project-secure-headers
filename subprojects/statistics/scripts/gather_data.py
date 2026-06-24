@@ -187,6 +187,38 @@ async def load_security_headers(session: aiohttp.ClientSession) -> list:
     return set(headers)
 
 
+async def fallback_download_input_csv(session: aiohttp.ClientSession):
+    """
+    Only for fallback!
+    Download and parse the Majestic Top 1M CSV if the local input file is missing.
+    Extracts the rank and domain columns to match the expected format.
+    """
+    if os.path.exists(CSV_INPUT_FILE):
+        return
+
+    print(f"[+] {CSV_INPUT_FILE} not found. Downloading Majestic Top 1M CSV...")
+    os.makedirs(os.path.dirname(CSV_INPUT_FILE), exist_ok=True)
+
+    url = "http://downloads.majestic.com/majestic_million.csv"
+    async with session.get(url, timeout=aiohttp.ClientTimeout(total=300)) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"Failed to fetch Majestic CSV: HTTP {resp.status}")
+        
+        with open(CSV_INPUT_FILE, "w", encoding="utf-8") as out_f:
+            # Skip the first header line
+            await resp.content.readline()
+            
+            async for line in resp.content:
+                decoded_line = line.decode('utf-8', errors='ignore').strip()
+                if not decoded_line:
+                    continue
+                parts = decoded_line.split(',')
+                if len(parts) >= 3:
+                    out_f.write(f"{parts[0]},{parts[2]}\n")
+
+    print(f"[+] Successfully generated {CSV_INPUT_FILE}")
+
+
 def load_domains(filepath: str, limit: int) -> list:
     """
     Read up to *limit* domain names from the Majestic CSV file.
@@ -357,6 +389,8 @@ async def main():
         print("[+] Loading OSHP security headers list...")
         security_headers = await load_security_headers(session)
         print(f"    Headers: {security_headers}")
+
+        await fallback_download_input_csv(session)
 
         print(f"[+] Loading domains from {CSV_INPUT_FILE}...")
         all_domains = load_domains(CSV_INPUT_FILE, NUMBER_OF_DOMAINS_TO_TAKE)
