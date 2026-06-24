@@ -31,7 +31,6 @@ jobs:
         run: |
           mkdir -p subprojects/statistics/data
           gh release download --pattern "data.db" --dir subprojects/statistics/data
-          gh release download --pattern "input.csv" --dir subprojects/statistics/data
       - name: Run update of the tab related files
         run: |
           cd ci; bash stats_manage_generation.sh
