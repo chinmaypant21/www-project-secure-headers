@@ -23,9 +23,10 @@ jobs:
     - name: Generate the input CSV file from a fresh Majestic CSV file
       run: |
         cd subprojects/statistics
+        mkdir -p data
         wget http://downloads.majestic.com/majestic_million.csv
         cat majestic_million.csv | awk -F  "," 'NR>1 {print $1 "," $3}' > data/input.csv
-        rm majestic_million.csv        
+        rm majestic_million.csv
     - name: Run data gathering script
       run: |
         cd subprojects/statistics
@@ -36,7 +37,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        RELEASE_TAG="dataset-$(date +'%Y-%m')"
+        RELEASE_TAG="dataset-$(date +'%Y-%m-%d')"
         if ! gh release view "$RELEASE_TAG"; then
           gh release create "$RELEASE_TAG" --title "Dataset $RELEASE_TAG" --notes "Monthly generated dataset."
         fi
