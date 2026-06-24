@@ -39,6 +39,6 @@ jobs:
       run: |
         RELEASE_TAG="dataset-$(date +'%Y-%m-%d')"
         if ! gh release view "$RELEASE_TAG"; then
-          gh release create "$RELEASE_TAG" --title "Dataset $RELEASE_TAG" --notes "Monthly generated dataset."
+          gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes "Monthly generated dataset."
         fi
         gh release upload "$RELEASE_TAG" subprojects/statistics/data/data.db subprojects/statistics/data/input.csv --clobber
