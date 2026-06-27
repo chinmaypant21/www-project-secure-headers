@@ -32,6 +32,7 @@ USER_AGENT = (
 DATA_FOLDER = "../data"
 DATA_DB_FILE = f"{DATA_FOLDER}/data.db"
 CSV_INPUT_FILE = f"{DATA_FOLDER}/input.csv"
+MAJESTIC_CSV_URL = "http://downloads.majestic.com/majestic_million.csv"
 CHECKPOINT_FILE = f"{DATA_FOLDER}/checkpoint.json"
 
 # Explicit nameservers with round-robin rotation nameservers replace 
@@ -187,20 +188,21 @@ async def load_security_headers(session: aiohttp.ClientSession) -> list:
     return set(headers)
 
 
-async def fallback_download_input_csv(session: aiohttp.ClientSession):
+async def get_input_csv(session: aiohttp.ClientSession):
     """
-    Only for fallback!
     Download and parse the Majestic Top 1M CSV if the local input file is missing.
     Extracts the rank and domain columns to match the expected format.
     """
+    
+    # Skip downloading if the file exists. This speeds up local development
+    # and ensures resumed checkpoint runs use the exact same dataset.
     if os.path.exists(CSV_INPUT_FILE):
         return
 
     print(f"[+] {CSV_INPUT_FILE} not found. Downloading Majestic Top 1M CSV...")
     os.makedirs(os.path.dirname(CSV_INPUT_FILE), exist_ok=True)
 
-    url = "http://downloads.majestic.com/majestic_million.csv"
-    async with session.get(url, timeout=aiohttp.ClientTimeout(total=300)) as resp:
+    async with session.get(MAJESTIC_CSV_URL, timeout=aiohttp.ClientTimeout(total=300)) as resp:
         if resp.status != 200:
             raise RuntimeError(f"Failed to fetch Majestic CSV: HTTP {resp.status}")
         
@@ -390,7 +392,7 @@ async def main():
         security_headers = await load_security_headers(session)
         print(f"    Headers: {security_headers}")
 
-        await fallback_download_input_csv(session)
+        await get_input_csv(session)
 
         print(f"[+] Loading domains from {CSV_INPUT_FILE}...")
         all_domains = load_domains(CSV_INPUT_FILE, NUMBER_OF_DOMAINS_TO_TAKE)
